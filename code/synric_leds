@@ -1,0 +1,72 @@
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <WebSocketsClient.h>
+#include <ArduinoJson.h>
+#include <StreamString.h>
+#include "SynricPro.h"
+#include "SynricProSwitch.h"
+
+// WiFi credentials
+#define WIFI_SSID "YourWiFiSSID"
+#define WIFI_PASSWORD "YourWiFiPassword"
+
+// Synric Pro credentials
+#define API_KEY "your-synricpro-api-key"
+#define DEVICE_ID1 "device-id-relay1"
+#define DEVICE_ID2 "device-id-relay2"
+#define DEVICE_ID3 "device-id-relay3"
+
+// GPIO pins for relays
+#define RELAY1_PIN D1
+#define RELAY2_PIN D2
+#define RELAY3_PIN D5
+
+// Function to control a relay
+bool onPowerState(String deviceId, bool state) {
+  if (deviceId == DEVICE_ID1) digitalWrite(RELAY1_PIN, state);
+  if (deviceId == DEVICE_ID2) digitalWrite(RELAY2_PIN, state);
+  if (deviceId == DEVICE_ID3) digitalWrite(RELAY3_PIN, state);
+
+  Serial.printf("Device %s set to %s\n", deviceId.c_str(), state ? "ON" : "OFF");
+  return true;
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Set relay pins as output
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+  pinMode(RELAY3_PIN, OUTPUT);
+
+  // Set relays initially off
+  digitalWrite(RELAY1_PIN, LOW);
+  digitalWrite(RELAY2_PIN, LOW);
+  digitalWrite(RELAY3_PIN, LOW);
+
+  // Connect to WiFi
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500); Serial.print(".");
+  }
+  Serial.println("Connected!");
+
+  // Synric Pro setup
+  SynricPro synricPro(API_KEY);
+
+  SynricProSwitch &relay1 = synricPro.addDevice<SynricProSwitch>(DEVICE_ID1);
+  relay1.onPowerState(onPowerState);
+
+  SynricProSwitch &relay2 = synricPro.addDevice<SynricProSwitch>(DEVICE_ID2);
+  relay2.onPowerState(onPowerState);
+
+  SynricProSwitch &relay3 = synricPro.addDevice<SynricProSwitch>(DEVICE_ID3);
+  relay3.onPowerState(onPowerState);
+
+  synricPro.begin();
+}
+
+void loop() {
+  SynricPro.handle();
+}
